@@ -17,7 +17,11 @@ class AnkiHelper(
         var CardOrd : String //value
 
         //selection & selectionArgs are necessary, default values can only get 1 note
-        val cursor = mContentResolver.query(FlashCardsContract.ReviewInfo.CONTENT_URI,arrayOf(FlashCardsContract.ReviewInfo.NOTE_ID, FlashCardsContract.ReviewInfo.CARD_ORD),"limit=?",arrayOf("100"),null)
+        val cursor = mContentResolver.query(FlashCardsContract.ReviewInfo.CONTENT_URI,
+            arrayOf(FlashCardsContract.ReviewInfo.NOTE_ID, FlashCardsContract.ReviewInfo.CARD_ORD),
+            "limit=?",
+            arrayOf("100"),
+            null)
 
         if(cursor != null) {
             val nid = cursor.getColumnIndex(FlashCardsContract.ReviewInfo.NOTE_ID)
@@ -59,5 +63,20 @@ class AnkiHelper(
             return card
         }
         return null
+    }
+    fun getDeckID(DeckName : String) : String {
+        val DeckList = mApi.deckList
+        DeckList.forEach {
+            if(it.value == DeckName)return it.key.toString()
+        }
+        return "-1"
+    }
+    fun filterCards(list : MutableList<ACard>, DeckName: String?) : MutableList<ACard> {
+        if(DeckName == null) return list
+        val FilteredList = mutableListOf<ACard>()
+        list.forEach {
+            if(it.mDeckID == getDeckID(DeckName))FilteredList.add(it)
+        }
+        return FilteredList
     }
 }

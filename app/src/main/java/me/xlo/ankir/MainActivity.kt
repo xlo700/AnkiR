@@ -1,15 +1,18 @@
 package me.xlo.ankir
 
 import android.annotation.SuppressLint
+import android.content.Context.MODE_PRIVATE
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,21 +21,28 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import me.xlo.ankir.ui.theme.AnkiRTheme
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
 
     val mHelper by lazy { AnkiHelper(this) }
+
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -45,13 +55,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AnkiRTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) {
-                    TopAppBar(
-                        title = {
-                            Text("AnkiR")
-                        }
-                    )
-                    ReviewScreen(getReviewCards())
+                val mFilterDeck : String? = this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)
+                Scaffold(modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        TopAppBar(
+                            title = {
+                                Text("AnkiR")
+                            },
+                            actions = { FilterBtn() }
+                        )
+                    }
+                ) {paddingValues ->
+
+                        ReviewScreen(
+                            mHelper.filterCards(getReviewCards(), mFilterDeck),
+                            modifier = Modifier.padding(paddingValues)
+                        )
+
                 }
             }
         }
@@ -79,12 +99,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : MutableList<ACard>) {
+fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
+    if(!(list.size > 0)) {
+        NoCard()
+        return
+    }
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
     var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
-    Column(modifier = Modifier.fillMaxSize(),
+    Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
+        Text("Total:${CardIndex + 1}/${list.size}", modifier = Modifier)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -98,7 +123,7 @@ fun ReviewScreen(list : MutableList<ACard>) {
             Button(
                 onClick = {
                     if(CardIndex >= (list.size - 1)) {
-                        Toast.makeText(context,"复习完毕",Toast.LENGTH_LONG)
+                        Toast.makeText(context,"You have done tasks!",Toast.LENGTH_LONG)
                             .show()
                     } else {
                         CardIndex = CardIndex + 1
@@ -120,7 +145,62 @@ fun ReviewScreen(list : MutableList<ACard>) {
                     .weight(1f)
                     .padding(horizontal = 8.dp)
             ) {
-                Text("Q")
+                Text("Question")
+            }
+        }
+    }
+}
+@Composable
+fun NoCard() {
+    Box(modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("No cards")
+    }
+}
+@Composable
+fun FilterBtn() {
+    val context = LocalContext.current
+    var state by remember { mutableStateOf(false) }
+    if(state) FilterDialog({
+        state = false
+        Toast.makeText(context,"Restart app to apply changes",Toast.LENGTH_LONG)
+            .show()
+    })
+    Text(
+        "FilterDeck",
+        textAlign = TextAlign.Right,
+        modifier = Modifier
+            .clickable(
+                enabled = true,
+            ) {
+                state = true
+            }
+    )
+}
+@Composable
+fun FilterDialog(onDismis : () -> Unit) {
+    val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
+    var text by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
+    Dialog(onDismissRequest = onDismis,
+        properties = DialogProperties(true,true)) {
+        Column {
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = text,
+                onValueChange = {
+                    mSharedPreferences.edit {
+                        putString("filter",it)
+                    }
+                    text = it
+                },
+                label = { Text("Filter cards by deck name:") }
+            )
+            Button(
+                onClick = onDismis,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Confirm")
             }
         }
     }
