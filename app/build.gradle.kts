@@ -5,6 +5,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("E:\\Keystore\\il")
+            storePassword = "iled25519"
+            keyAlias = "key0"
+            keyPassword = "ilrsa256"
+        }
+    }
     namespace = "me.xlo.ankir"
     compileSdk {
         version = release(36)
@@ -27,6 +35,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -58,5 +67,4 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("com.github.ankidroid:Anki-Android:api-v1.1.0")
-
 }

@@ -12,12 +12,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -25,7 +26,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -47,10 +47,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        //request permission for ankidroid
         requestPermission()
-
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -66,20 +63,22 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {paddingValues ->
-
                         ReviewScreen(
                             mHelper.filterCards(getReviewCards(), mFilterDeck),
                             modifier = Modifier.padding(paddingValues)
                         )
-
                 }
             }
         }
     }
     fun getReviewCards() : MutableList<ACard> {
-        val IDs = mHelper.getReviewInfo()
+        val Decks = mHelper.getAllDecks()
+        val Ids = mutableListOf<Pair<String, String>>()
+        for(i in Decks) {
+            Ids.addAll(mHelper.getReviewInfo(i.deckId))
+        }
         val Cards = mutableListOf<ACard>()
-        IDs.forEach {
+        Ids.forEach {
             val card = mHelper.getCard(it.first,it.second)
             if(card != null) {
                 Cards.add(card)
@@ -107,6 +106,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
     var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
+    var AnswerBtn = false
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${CardIndex + 1}/${list.size}", modifier = Modifier)
@@ -123,13 +123,12 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
             Button(
                 onClick = {
                     if(CardIndex >= (list.size - 1)) {
-                        Toast.makeText(context,"You have done tasks!",Toast.LENGTH_LONG)
+                        Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
                             .show()
                     } else {
                         CardIndex = CardIndex + 1
                         Show = list[CardIndex].mAnswer
                     }
-
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -190,15 +189,16 @@ fun FilterDialog(onDismis : () -> Unit) {
                 value = text,
                 onValueChange = {
                     mSharedPreferences.edit {
-                        putString("filter",it)
-                    }
+                        putString("filter",it) }
                     text = it
                 },
-                label = { Text("Filter cards by deck name:") }
+                label = { Text("Filter cards by deck name:") },
+                shape = RoundedCornerShape(10.dp)
             )
             Button(
                 onClick = onDismis,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Confirm")
             }
