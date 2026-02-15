@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -42,7 +41,6 @@ import androidx.core.content.edit
 class MainActivity : ComponentActivity() {
 
     val mHelper by lazy { AnkiHelper(this) }
-
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -99,14 +97,13 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
-    if(!(list.size > 0)) {
+    if(list.isEmpty()) {
         NoCard()
         return
     }
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
     var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
-    var AnswerBtn = false
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${CardIndex + 1}/${list.size}", modifier = Modifier)
@@ -182,7 +179,7 @@ fun FilterDialog(onDismis : () -> Unit) {
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
     var text by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
     Dialog(onDismissRequest = onDismis,
-        properties = DialogProperties(true,true)) {
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)) {
         Column {
             TextField(
                 modifier = Modifier.fillMaxWidth(),

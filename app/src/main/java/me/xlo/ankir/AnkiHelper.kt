@@ -2,14 +2,12 @@ package me.xlo.ankir
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import com.ichi2.anki.FlashCardsContract
 import com.ichi2.anki.api.AddContentApi
 
 class AnkiHelper(
     val context : Context
 ) {
-    val TAG = "AnkiR"
     data class DeckInfo(
         val deckId: String,
         val deckName: String
@@ -42,7 +40,7 @@ class AnkiHelper(
         return arr
     }
     fun getCard(nid : String,cid : String) : ACard? {
-        var card = ACard("","","","")
+        val card = ACard("","","","")
         val proj = arrayOf(
             FlashCardsContract.Card.CARD_NAME,
             FlashCardsContract.Card.DECK_ID,
