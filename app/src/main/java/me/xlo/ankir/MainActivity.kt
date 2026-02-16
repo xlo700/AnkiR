@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,6 +112,7 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
+    val replaceAnswer = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
     var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
@@ -135,7 +137,12 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
                             .show()
                     } else {
                         CardIndex = CardIndex + 1
-                        Show = list[CardIndex].mAnswer
+                        if(replaceAnswer.isNullOrBlank()) {
+                            Show = list[CardIndex].mAnswer
+                        }
+                        else {
+                            Show = list[CardIndex].mAnswer.replace(replaceAnswer, "")
+                        }
                     }
                 },
                 modifier = Modifier
@@ -175,7 +182,7 @@ fun FilterBtn() {
             .show()
     })
     Text(
-        "FilterDeck",
+        "Filter",
         textAlign = TextAlign.Right,
         modifier = Modifier
             .clickable(
@@ -188,20 +195,33 @@ fun FilterBtn() {
 @Composable
 fun FilterDialog(onDismiss : () -> Unit) {
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
-    var text by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
+    var filterDeck by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
+    var replaceAnswer by remember { mutableStateOf(mSharedPreferences.getString("replace_answer","") ?: "") }
     Dialog(onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)) {
         Column {
             TextField(
                 modifier = Modifier.fillMaxWidth(),
-                value = text,
+                value = filterDeck,
                 onValueChange = {
                     mSharedPreferences.edit {
                         putString("filter",it) }
-                    text = it
+                    filterDeck = it
                 },
                 label = { Text("Filter cards by deck name:") },
                 shape = RoundedCornerShape(10.dp)
+            )
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = replaceAnswer,
+                onValueChange = {
+                    mSharedPreferences.edit {
+                        putString("replace_answer",it) }
+                    replaceAnswer = it
+                },
+                label = { Text("Replace specified character") },
+                shape = RoundedCornerShape(10.dp),
+                enabled = false
             )
             Button(
                 onClick = onDismiss,
@@ -215,9 +235,11 @@ fun FilterDialog(onDismiss : () -> Unit) {
 }
 @Composable
 fun HtmlWebView(htmlContent: String) {
+    val isDarkTheme = isSystemInDarkTheme()
     AndroidView(
         factory = { context ->
             WebView(context).apply {
+
 
                 settings.javaScriptEnabled = true
 
@@ -234,6 +256,9 @@ fun HtmlWebView(htmlContent: String) {
             }
         },
         update = { webView ->
+            val backgroundColor = if (isDarkTheme) "#121212" else "#FFFFFF"
+            val textColor = if (isDarkTheme) "#E0E0E0" else "#000000"
+            val linkColor = if (isDarkTheme) "#BB86FC" else "#0000EE"
             val wrappedHtml = """
                 <!DOCTYPE html>
                 <html>
@@ -245,7 +270,12 @@ fun HtmlWebView(htmlContent: String) {
                             padding: 16px;
                             margin: 0;
                             font-size: 16px;
+                            background-color: $backgroundColor;
+                            color: $textColor;
                             line-height: 1.5;
+                        }
+                        a {
+                            color: $linkColor;
                         }
                         img {
                             max-width: 100%;
