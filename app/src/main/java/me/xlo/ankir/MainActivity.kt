@@ -127,6 +127,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
             contentAlignment = Alignment.Center
         ) {
             HtmlWebView(htmlContent = Show)
+            //Text(Show)
         }
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -141,7 +142,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
                             Show = list[CardIndex].mAnswer
                         }
                         else {
-                            Show = list[CardIndex].mAnswer.replace(replaceAnswer, "")
+                            Show = list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
                         }
                     }
                 },
@@ -219,9 +220,8 @@ fun FilterDialog(onDismiss : () -> Unit) {
                         putString("replace_answer",it) }
                     replaceAnswer = it
                 },
-                label = { Text("Replace specified character") },
-                shape = RoundedCornerShape(10.dp),
-                enabled = false
+                label = { Text("Replace specified character in answer") },
+                shape = RoundedCornerShape(10.dp)
             )
             Button(
                 onClick = onDismiss,
