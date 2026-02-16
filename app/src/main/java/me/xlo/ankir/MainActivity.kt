@@ -4,7 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context.MODE_PRIVATE
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -39,20 +39,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
-import me.xlo.ankir.ui.theme.AnkiRTheme
 import androidx.core.content.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import me.xlo.ankir.ui.theme.AnkiRTheme
 
 class MainActivity : ComponentActivity() {
 
     val mHelper by lazy { AnkiHelper(this) }
-    val TAG = "AnkiR"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -125,7 +124,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.Center
         ) {
-            Text(Show)
+            HtmlWebView(htmlContent = Show)
         }
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -213,4 +212,54 @@ fun FilterDialog(onDismiss : () -> Unit) {
             }
         }
     }
+}
+@Composable
+fun HtmlWebView(htmlContent: String) {
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+
+                settings.javaScriptEnabled = true
+
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+
+                settings.setSupportZoom(true)
+                settings.builtInZoomControls = true
+                settings.displayZoomControls = false
+
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+                webViewClient = WebViewClient()
+            }
+        },
+        update = { webView ->
+            val wrappedHtml = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>
+                        body {
+                            font-family: sans-serif;
+                            padding: 16px;
+                            margin: 0;
+                            font-size: 16px;
+                            line-height: 1.5;
+                        }
+                        img {
+                            max-width: 100%;
+                            height: auto;
+                        }
+                    </style>
+                </head>
+                <body>
+                    $htmlContent
+                </body>
+                </html>
+            """.trimIndent()
+
+            webView.loadDataWithBaseURL(null, wrappedHtml, "text/html", "UTF-8", null)
+        }
+    )
 }
