@@ -15,17 +15,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +37,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import me.xlo.ankir.ui.theme.AnkiRTheme
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -65,33 +71,31 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {paddingValues ->
-                    val list = mHelper.filterCards(getReviewCards(), mFilterDeck)
-                    if(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_DENIED || list.isEmpty()) {
-                        NoCard()
+                    var list by remember { mutableStateOf<MutableList<ACard>?>(null) }
+                    LaunchedEffect(Unit) {
+                        withContext(Dispatchers.IO) {
+                            list = mHelper.getFilteredReviewCards(mFilterDeck)
+                        }
                     }
-                    ReviewScreen(
-                        list,
-                        modifier = Modifier.padding(paddingValues)
-                    )
+                    if(list == null) {
+                        Box(modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center) {
+                            Column {
+                                CircularProgressIndicator()
+                                Text("Loading")
+                            }
+                        }
+                    } else if(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_DENIED || list!!.isEmpty()) {
+                        NoCard()
+                    } else {
+                        ReviewScreen(
+                            list!!.shuffled().toMutableList(),
+                            modifier = Modifier.padding(paddingValues)
+                        )
+                    }
                 }
             }
         }
-    }
-    fun getReviewCards() : MutableList<ACard> {
-        val Decks = mHelper.getAllDecks()
-        val Ids = mutableListOf<Pair<String, String>>()
-        for(i in Decks) {
-            Ids.addAll(mHelper.getReviewInfo(i.deckId))
-        }
-        val Cards = mutableListOf<ACard>()
-        Ids.forEach {
-            val card = mHelper.getCard(it.first,it.second)
-            if(card != null) {
-                Cards.add(card)
-                Log.i(TAG,"Add card ${card.mQuestion} to review list")
-            }
-        }
-        return Cards
     }
     fun requestPermission() {
         val permissionLauncher = registerForActivityResult(
@@ -180,10 +184,10 @@ fun FilterBtn() {
     )
 }
 @Composable
-fun FilterDialog(onDismis : () -> Unit) {
+fun FilterDialog(onDismiss : () -> Unit) {
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
     var text by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
-    Dialog(onDismissRequest = onDismis,
+    Dialog(onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)) {
         Column {
             TextField(
@@ -198,7 +202,7 @@ fun FilterDialog(onDismis : () -> Unit) {
                 shape = RoundedCornerShape(10.dp)
             )
             Button(
-                onClick = onDismis,
+                onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {

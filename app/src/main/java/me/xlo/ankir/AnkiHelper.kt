@@ -7,7 +7,7 @@ import com.ichi2.anki.FlashCardsContract
 import com.ichi2.anki.api.AddContentApi
 
 class AnkiHelper(
-    val context : Context
+    context : Context
 ) {
     data class DeckInfo(
         val deckId: String,
@@ -18,14 +18,7 @@ class AnkiHelper(
     val mApi = AddContentApi(context)
     fun getReviewInfo(did : String) : MutableList<Pair<String, String>> {
         val arr = mutableListOf<Pair<String, String>>()
-
-        //containing "::" means it is a subdeck, leading to return the same cards again
         val deckName = mApi.getDeckName(did.toLong())
-        if(deckName.contains("::")) {
-            Log.i(TAG,"Found subdeck $deckName")
-            return arr
-        }
-
         var NoteID : String //key
         var CardOrd : String //value
 
@@ -46,8 +39,8 @@ class AnkiHelper(
         Log.i(TAG,"Get review info of deck $deckName")
         return arr
     }
-    fun getCard(nid : String,cid : String) : ACard? {
-        val card = ACard("","","","")
+    fun getCard(nid : String,cord : String) : ACard? {
+        var card = ACard("","","","")
         val proj = arrayOf(
             FlashCardsContract.Card.CARD_NAME,
             FlashCardsContract.Card.DECK_ID,
@@ -56,23 +49,20 @@ class AnkiHelper(
         )
         val noteuri = Uri.withAppendedPath(FlashCardsContract.Note.CONTENT_URI,nid)
         val cardsuri = Uri.withAppendedPath(noteuri,"cards")
-        val carduri = Uri.withAppendedPath(cardsuri,cid)
+        val carduri = Uri.withAppendedPath(cardsuri,cord)
         val cursor = mContentResolver.query(carduri,proj,null,null,null)
         cursor?.use{
-            val CardNameIndex = cursor.getColumnIndex(FlashCardsContract.Card.CARD_NAME)
-            val DeckIDIndex = cursor.getColumnIndex(FlashCardsContract.Card.DECK_ID)
-            val AnswerIndex = cursor.getColumnIndex(FlashCardsContract.Card.ANSWER_PURE)
-            val QuestionIndex = cursor.getColumnIndex(FlashCardsContract.Card.QUESTION_SIMPLE)
-            while (cursor.moveToNext()) {
-                card.mName = cursor.getString(CardNameIndex)
-                card.mDeckID = cursor.getString(DeckIDIndex)
-                card.mAnswer = cursor.getString(AnswerIndex)
-                card.mQuestion = cursor.getString(QuestionIndex)
+            if (it.moveToFirst()) {
+                card = ACard(
+                    it.getString(0) ?: "",
+                    it.getString(1) ?: "",
+                    it.getString(2) ?: "",
+                    it.getString(3) ?: ""
+                )
             }
-            Log.i(TAG,"Get card(${card.mQuestion},$cid)")
             return card
         }
-        Log.e(TAG,"Card($cid) NOT FOUND")
+        Log.e(TAG,"Card($cord) NOT FOUND")
         return null
     }
     fun getDeckID(DeckName : String) : String {
@@ -87,16 +77,10 @@ class AnkiHelper(
         return "-1"
     }
     fun filterCards(list : MutableList<ACard>, DeckName: String?) : MutableList<ACard> {
-        if((DeckName == null) || (DeckName == "")) {
-            Log.i(TAG,"No filter condition")
-            return list
-        }
+        if((DeckName == null) || (DeckName == "")) return list
         val FilteredList = mutableListOf<ACard>()
         list.forEach {
-            if(it.mDeckID == getDeckID(DeckName)) {
-                Log.i(TAG,"Filter card ${it.mQuestion}")
-                FilteredList.add(it)
-            }
+            if(it.mDeckID == getDeckID(DeckName)) FilteredList.add(it)
         }
         return FilteredList
     }
@@ -124,6 +108,27 @@ class AnkiHelper(
             }
         }
         return decks
+    }
+    fun getFilteredReviewCards(filter : String?) : MutableList<ACard> {
+        val decks = getAllDecks()
+        val cards = mutableListOf<ACard>()
+        for(deck in decks) {
+            val review = getReviewInfo(deck.deckId)
+
+            if(filter.isNullOrBlank() && !deck.deckName.contains("::")) {
+                for((nid,cord) in review) {
+                    val card = getCard(nid,cord)
+                    if(card != null)cards.add(card)
+                }
+            }
+            if(deck.deckName == filter) {
+                for((nid,cord) in review) {
+                    val card = getCard(nid,cord)
+                    if(card != null)cards.add(card)
+                }
+            }
+        }
+        return cards
     }
 }
 data class ACard(
