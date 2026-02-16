@@ -2,6 +2,7 @@ package me.xlo.ankir
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import com.ichi2.anki.FlashCardsContract
 import com.ichi2.anki.api.AddContentApi
 
@@ -12,13 +13,18 @@ class AnkiHelper(
         val deckId: String,
         val deckName: String
     )
+    val TAG = "AnkiR"
     val mContentResolver = context.contentResolver
     val mApi = AddContentApi(context)
     fun getReviewInfo(did : String) : MutableList<Pair<String, String>> {
         val arr = mutableListOf<Pair<String, String>>()
 
         //containing "::" means it is a subdeck, leading to return the same cards again
-        if(mApi.getDeckName(did.toLong()).contains("::"))return arr
+        val deckName = mApi.getDeckName(did.toLong())
+        if(deckName.contains("::")) {
+            Log.i(TAG,"Found subdeck $deckName")
+            return arr
+        }
 
         var NoteID : String //key
         var CardOrd : String //value
@@ -37,6 +43,7 @@ class AnkiHelper(
                 arr.add(Pair(NoteID,CardOrd))
             }
         }
+        Log.i(TAG,"Get review info of deck $deckName")
         return arr
     }
     fun getCard(nid : String,cid : String) : ACard? {
@@ -62,48 +69,66 @@ class AnkiHelper(
                 card.mAnswer = cursor.getString(AnswerIndex)
                 card.mQuestion = cursor.getString(QuestionIndex)
             }
+            Log.i(TAG,"Get card(${card.mQuestion},$cid)")
             return card
         }
+        Log.e(TAG,"Card($cid) NOT FOUND")
         return null
     }
     fun getDeckID(DeckName : String) : String {
         val DeckList = mApi.deckList
         DeckList.forEach {
-            if(it.value == DeckName)return it.key.toString()
+            if(it.value == DeckName) {
+                Log.i(TAG,"Get deck id of $DeckName")
+                return it.key.toString()
+            }
         }
+        Log.e(TAG,"Deck $DeckName NOT FOUND")
         return "-1"
     }
     fun filterCards(list : MutableList<ACard>, DeckName: String?) : MutableList<ACard> {
-        if((DeckName == null) || (DeckName == "")) return list
+        if((DeckName == null) || (DeckName == "")) {
+            Log.i(TAG,"No filter condition")
+            return list
+        }
         val FilteredList = mutableListOf<ACard>()
         list.forEach {
-            if(it.mDeckID == getDeckID(DeckName))FilteredList.add(it)
+            if(it.mDeckID == getDeckID(DeckName)) {
+                Log.i(TAG,"Filter card ${it.mQuestion}")
+                FilteredList.add(it)
+            }
         }
         return FilteredList
     }
     fun getAllDecks(): List<DeckInfo> {
         val decks = mutableListOf<DeckInfo>()
-            val cursor = mContentResolver.query(
-                FlashCardsContract.Deck.CONTENT_ALL_URI,
-                arrayOf(
-                    FlashCardsContract.Deck.DECK_ID,
-                    FlashCardsContract.Deck.DECK_NAME
-                ),
-                null,
-                null,
-                null
-            )
-            cursor?.use {
-                val idIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_ID)
-                val nameIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_NAME)
+        val cursor = mContentResolver.query(
+            FlashCardsContract.Deck.CONTENT_ALL_URI,
+            arrayOf(
+                FlashCardsContract.Deck.DECK_ID,
+                FlashCardsContract.Deck.DECK_NAME
+            ),
+            null,
+            null,
+            null
+        )
+        cursor?.use {
+            val idIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_ID)
+            val nameIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_NAME)
 
-                while (it.moveToNext()) {
-                    val deckId = it.getLong(idIndex).toString()
-                    val deckName = it.getString(nameIndex)
-
-                    decks.add(DeckInfo(deckId, deckName))
-                }
+            while (it.moveToNext()) {
+                val deckId = it.getLong(idIndex).toString()
+                val deckName = it.getString(nameIndex)
+                decks.add(DeckInfo(deckId, deckName))
+                Log.i(TAG,"Add $deckName to decks list")
             }
+        }
         return decks
     }
 }
+data class ACard(
+    var mName : String,
+    var mDeckID : String,
+    var mAnswer : String,
+    var mQuestion : String
+)

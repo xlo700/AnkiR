@@ -2,7 +2,9 @@ package me.xlo.ankir
 
 import android.annotation.SuppressLint
 import android.content.Context.MODE_PRIVATE
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -35,12 +37,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import me.xlo.ankir.ui.theme.AnkiRTheme
 import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
 
     val mHelper by lazy { AnkiHelper(this) }
+    val TAG = "AnkiR"
 
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -61,10 +65,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {paddingValues ->
-                        ReviewScreen(
-                            mHelper.filterCards(getReviewCards(), mFilterDeck),
-                            modifier = Modifier.padding(paddingValues)
-                        )
+                    val list = mHelper.filterCards(getReviewCards(), mFilterDeck)
+                    if(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_DENIED || list.isEmpty()) {
+                        NoCard()
+                    }
+                    ReviewScreen(
+                        list,
+                        modifier = Modifier.padding(paddingValues)
+                    )
                 }
             }
         }
@@ -80,6 +88,7 @@ class MainActivity : ComponentActivity() {
             val card = mHelper.getCard(it.first,it.second)
             if(card != null) {
                 Cards.add(card)
+                Log.i(TAG,"Add card ${card.mQuestion} to review list")
             }
         }
         return Cards
@@ -97,10 +106,6 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
-    if(list.isEmpty()) {
-        NoCard()
-        return
-    }
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
     var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
@@ -151,7 +156,7 @@ fun NoCard() {
     Box(modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Text("No cards")
+        Text("No cards or permission denied")
     }
 }
 @Composable
