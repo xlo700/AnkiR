@@ -117,11 +117,11 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
     if(replaceAnswer.isNullOrBlank())replaceAnswer = "(?!)"
 
     val context = LocalContext.current
-    var CardIndex by remember { mutableStateOf(0) }
-    var Show by remember { mutableStateOf(list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
+    var cardIndex by remember { mutableStateOf(0) }
+    var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
-        Text("Total:${CardIndex + 1}/${list.size}", modifier = Modifier)
+        Text("Total:${cardIndex + 1}/${list.size}", modifier = Modifier)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -129,19 +129,19 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.Center
         ) {
-            HtmlWebView(htmlContent = Show)
+            HtmlWebView(htmlContent = show)
             //Text(Show)
         }
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly) {
             Button(
                 onClick = {
-                    if(CardIndex >= (list.size - 1)) {
+                    if(cardIndex >= (list.size - 1)) {
                         Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
                             .show()
                     } else {
-                        CardIndex = CardIndex + 1
-                        Show = list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+                        cardIndex = cardIndex + 1
+                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
                     }
                 },
                 modifier = Modifier
@@ -152,7 +152,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
             }
             Button(
                 onClick = {
-                    Show = list[CardIndex].mQuestion
+                    show = list[cardIndex].mQuestion
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -237,7 +237,6 @@ fun HtmlWebView(htmlContent: String) {
     AndroidView(
         factory = { context ->
             WebView(context).apply {
-
 
                 settings.javaScriptEnabled = true
 

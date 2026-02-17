@@ -76,14 +76,6 @@ class AnkiHelper(
         Log.e(TAG,"Deck $DeckName NOT FOUND")
         return "-1"
     }
-    fun filterCards(list : MutableList<ACard>, DeckName: String?) : MutableList<ACard> {
-        if((DeckName == null) || (DeckName == "")) return list
-        val FilteredList = mutableListOf<ACard>()
-        list.forEach {
-            if(it.mDeckID == getDeckID(DeckName)) FilteredList.add(it)
-        }
-        return FilteredList
-    }
     fun getAllDecks(): List<DeckInfo> {
         val decks = mutableListOf<DeckInfo>()
         val cursor = mContentResolver.query(
