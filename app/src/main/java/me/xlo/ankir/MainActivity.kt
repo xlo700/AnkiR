@@ -112,10 +112,13 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
-    val replaceAnswer = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+
+    var replaceAnswer = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+    if(replaceAnswer.isNullOrBlank())replaceAnswer = "(?!)"
+
     val context = LocalContext.current
     var CardIndex by remember { mutableStateOf(0) }
-    var Show by remember { mutableStateOf(list[CardIndex].mAnswer) }
+    var Show by remember { mutableStateOf(list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${CardIndex + 1}/${list.size}", modifier = Modifier)
@@ -138,12 +141,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
                             .show()
                     } else {
                         CardIndex = CardIndex + 1
-                        if(replaceAnswer.isNullOrBlank()) {
-                            Show = list[CardIndex].mAnswer
-                        }
-                        else {
-                            Show = list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-                        }
+                        Show = list[CardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
                     }
                 },
                 modifier = Modifier
