@@ -8,6 +8,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -57,12 +58,25 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     override fun onCreate(savedInstanceState: Bundle?) {
-        requestPermission()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             AnkiRTheme {
                 val mFilterDeck : String? = this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)
+
+                var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
+                val context = LocalContext.current
+
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+
+                    if (!isGranted) {
+                        Toast.makeText(context, "Permission denied", Toast.LENGTH_LONG).show()
+                    }
+                    isPermissionAllowed = isGranted
+                }
+
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
@@ -74,26 +88,36 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {paddingValues ->
                     var list by remember { mutableStateOf<MutableList<ACard>?>(null) }
-                    LaunchedEffect(Unit) {
-                        withContext(Dispatchers.IO) {
-                            list = mHelper.getFilteredReviewCards(mFilterDeck)
-                        }
-                    }
-                    if(list == null) {
-                        Box(modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center) {
-                            Column {
-                                CircularProgressIndicator()
-                                Text("Loading")
+                    LaunchedEffect(isPermissionAllowed) {
+                        if (isPermissionAllowed && list == null) {
+                            withContext(Dispatchers.IO) {
+                                list = mHelper.getFilteredReviewCards(mFilterDeck)
                             }
                         }
-                    } else if(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_DENIED || list!!.isEmpty()) {
-                        NoCard()
-                    } else {
-                        ReviewScreen(
-                            list!!.shuffled().toMutableList(),
-                            modifier = Modifier.padding(paddingValues)
-                        )
+                    }
+                    when(isPermissionAllowed) {
+                        false -> {
+                            permissionLauncher.launch("com.ichi2.anki.permission.READ_WRITE_DATABASE")
+                            NoCard()
+                        }
+                        true -> {
+                            if(list == null) {
+                                Box(modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center) {
+                                    Column {
+                                        CircularProgressIndicator()
+                                        Text("Loading")
+                                    }
+                                }
+                            } else if(list!!.isEmpty()) {
+                                NoCard()
+                            } else {
+                                ReviewScreen(
+                                    list!!.shuffled().toMutableList(),
+                                    modifier = Modifier.padding(paddingValues)
+                                )
+                            }
+                        }
                     }
                 }
             }
