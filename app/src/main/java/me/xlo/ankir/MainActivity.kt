@@ -199,10 +199,12 @@ fun NoCard() {
 fun FilterBtn() {
     val context = LocalContext.current
     var state by remember { mutableStateOf(false) }
-    if(state) FilterDialog({
+    if(state) FilterDialog({ isChanged ->
         state = false
-        Toast.makeText(context,"Restart app to apply changes",Toast.LENGTH_LONG)
-            .show()
+        if(isChanged) {
+            Toast.makeText(context,"Restart app to apply changes",Toast.LENGTH_LONG)
+                .show()
+        }
     })
     Text(
         "Filter",
@@ -216,11 +218,12 @@ fun FilterBtn() {
     )
 }
 @Composable
-fun FilterDialog(onDismiss : () -> Unit) {
+fun FilterDialog(onDismiss : (isChanged : Boolean) -> Unit) {
+    var isChanged = false
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
     var filterDeck by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
     var replaceAnswer by remember { mutableStateOf(mSharedPreferences.getString("replace_answer","") ?: "") }
-    Dialog(onDismissRequest = onDismiss,
+    Dialog(onDismissRequest = { onDismiss(isChanged) },
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)) {
         Column {
             TextField(
@@ -230,6 +233,7 @@ fun FilterDialog(onDismiss : () -> Unit) {
                     mSharedPreferences.edit {
                         putString("filter",it) }
                     filterDeck = it
+                    isChanged = true
                 },
                 label = { Text("Filter cards by deck name:") },
                 shape = RoundedCornerShape(10.dp)
@@ -241,12 +245,13 @@ fun FilterDialog(onDismiss : () -> Unit) {
                     mSharedPreferences.edit {
                         putString("replace_answer",it) }
                     replaceAnswer = it
+                    isChanged = true
                 },
                 label = { Text("Replace specified character in answer") },
                 shape = RoundedCornerShape(10.dp)
             )
             Button(
-                onClick = onDismiss,
+                onClick = { onDismiss(isChanged) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
