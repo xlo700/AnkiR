@@ -140,6 +140,7 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
     var replaceAnswer = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
     if(replaceAnswer.isNullOrBlank())replaceAnswer = "(?!)"
 
+    var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var cardIndex by remember { mutableStateOf(0) }
     var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
@@ -176,13 +177,19 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
             }
             Button(
                 onClick = {
-                    show = list[cardIndex].mQuestion
+                    if(isQuestion) {
+                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+                        isQuestion = false
+                    } else {
+                        show = list[cardIndex].mQuestion
+                        isQuestion = true
+                    }
                 },
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp)
             ) {
-                Text("Question")
+                Text("Reverse")
             }
         }
     }
