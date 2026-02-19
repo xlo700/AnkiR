@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                             if(list == null) {
                                 Box(modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center) {
-                                    Column {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         CircularProgressIndicator()
                                         Text("Loading")
                                     }
@@ -122,16 +122,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-    fun requestPermission() {
-        val permissionLauncher = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (!isGranted) {
-                Toast.makeText(this, "Please allow the permission to access AnkiDroid", Toast.LENGTH_LONG).show()
-            }
-        }
-        permissionLauncher.launch("com.ichi2.anki.permission.READ_WRITE_DATABASE")
     }
 }
 @Composable

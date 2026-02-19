@@ -40,7 +40,6 @@ class AnkiHelper(
         return arr
     }
     fun getCard(nid : String,cord : String) : ACard? {
-        var card = ACard("","","","")
         val proj = arrayOf(
             FlashCardsContract.Card.CARD_NAME,
             FlashCardsContract.Card.DECK_ID,
@@ -53,29 +52,28 @@ class AnkiHelper(
         val cursor = mContentResolver.query(carduri,proj,null,null,null)
         cursor?.use{
             if (it.moveToFirst()) {
-                card = ACard(
+                return ACard(
                     it.getString(0) ?: "",
                     it.getString(1) ?: "",
                     it.getString(2) ?: "",
                     it.getString(3) ?: ""
                 )
             }
-            return card
         }
         Log.e(TAG,"Card($cord) NOT FOUND")
         return null
     }
-    fun getDeckID(DeckName : String) : String {
-        val DeckList = mApi.deckList
-        DeckList.forEach {
-            if(it.value == DeckName) {
-                Log.i(TAG,"Get deck id of $DeckName")
-                return it.key.toString()
-            }
-        }
-        Log.e(TAG,"Deck $DeckName NOT FOUND")
-        return "-1"
-    }
+//    fun getDeckID(DeckName : String) : String {
+//        val DeckList = mApi.deckList
+//        DeckList.forEach {
+//            if(it.value == DeckName) {
+//                Log.i(TAG,"Get deck id of $DeckName")
+//                return it.key.toString()
+//            }
+//        }
+//        Log.e(TAG,"Deck $DeckName NOT FOUND")
+//        return "-1"
+//    }
     fun getAllDecks(): List<DeckInfo> {
         val decks = mutableListOf<DeckInfo>()
         val cursor = mContentResolver.query(
