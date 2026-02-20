@@ -62,8 +62,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AnkiRTheme {
-                val mFilterDeck : String? = this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)
-
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
 
@@ -91,7 +89,7 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(isPermissionAllowed) {
                         if (isPermissionAllowed && list == null) {
                             withContext(Dispatchers.IO) {
-                                list = mHelper.getFilteredReviewCards(mFilterDeck)
+                                list = mHelper.getFilteredReviewCards()
                             }
                         }
                     }

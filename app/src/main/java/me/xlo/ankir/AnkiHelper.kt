@@ -1,6 +1,7 @@
 package me.xlo.ankir
 
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.net.Uri
 import android.util.Log
 import com.ichi2.anki.FlashCardsContract
@@ -16,7 +17,9 @@ class AnkiHelper(
     val TAG = "AnkiR"
     val mContentResolver = context.contentResolver
     val mApi = AddContentApi(context)
-    fun getReviewInfo(did : String) : MutableList<Pair<String, String>> {
+    val mFilterDeck : String? = context.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)
+
+    fun getReviewInfo(did : String) : List<Pair<String, String>> {
         val arr = mutableListOf<Pair<String, String>>()
         val deckName = mApi.getDeckName(did.toLong())
         var NoteID : String //key
@@ -25,7 +28,7 @@ class AnkiHelper(
         val cursor = mContentResolver.query(FlashCardsContract.ReviewInfo.CONTENT_URI,
             arrayOf(FlashCardsContract.ReviewInfo.NOTE_ID, FlashCardsContract.ReviewInfo.CARD_ORD),
             "limit=?, deckID=?",
-            arrayOf("100",did),
+            arrayOf("500",did),
             null)
         cursor?.use{
             val nid = cursor.getColumnIndex(FlashCardsContract.ReviewInfo.NOTE_ID)
@@ -36,7 +39,7 @@ class AnkiHelper(
                 arr.add(Pair(NoteID,CardOrd))
             }
         }
-        Log.i(TAG,"Get review info of deck $deckName")
+        Log.i(TAG,"Get review info of deck $deckName total:${arr.size}")
         return arr
     }
     fun getCard(nid : String,cord : String) : ACard? {
@@ -74,7 +77,8 @@ class AnkiHelper(
 //        Log.e(TAG,"Deck $DeckName NOT FOUND")
 //        return "-1"
 //    }
-    fun getAllDecks(): List<DeckInfo> {
+    fun getFilteredDecks(filter : String?): List<DeckInfo> {
+        //TODO:filter decks here
         val decks = mutableListOf<DeckInfo>()
         val cursor = mContentResolver.query(
             FlashCardsContract.Deck.CONTENT_ALL_URI,
@@ -90,31 +94,38 @@ class AnkiHelper(
             val idIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_ID)
             val nameIndex = it.getColumnIndexOrThrow(FlashCardsContract.Deck.DECK_NAME)
 
-            while (it.moveToNext()) {
-                val deckId = it.getLong(idIndex).toString()
-                val deckName = it.getString(nameIndex)
-                decks.add(DeckInfo(deckId, deckName))
-                Log.i(TAG,"Add $deckName to decks list")
+            if(filter.isNullOrBlank()) {
+                while (it.moveToNext()) {
+                    val deckId = it.getLong(idIndex).toString()
+                    val deckName = it.getString(nameIndex)
+                    if(!deckName.contains("::")) {
+                        decks.add(DeckInfo(deckId, deckName))
+                        Log.i(TAG,"Add $deckName to decks list")
+                    }
+                }
+            } else {
+                while (it.moveToNext()) {
+                    val deckId = it.getLong(idIndex).toString()
+                    val deckName = it.getString(nameIndex)
+                    if(filter == deckName) {
+                        decks.add(DeckInfo(deckId,deckName))
+                    }
+                }
             }
         }
         return decks
     }
-    fun getFilteredReviewCards(filter : String?) : MutableList<ACard> {
-        val decks = getAllDecks()
+    fun getFilteredReviewCards() : MutableList<ACard> {
+        val decks = getFilteredDecks(mFilterDeck)
         val cards = mutableListOf<ACard>()
         for(deck in decks) {
             val review = getReviewInfo(deck.deckId)
-
-            if(filter.isNullOrBlank() && !deck.deckName.contains("::")) {
-                for((nid,cord) in review) {
-                    val card = getCard(nid,cord)
-                    if(card != null)cards.add(card)
-                }
-            }
-            if(deck.deckName == filter) {
-                for((nid,cord) in review) {
-                    val card = getCard(nid,cord)
-                    if(card != null)cards.add(card)
+            for ((nid, cord) in review) {
+                val card = getCard(nid, cord)
+                if (card != null) {
+                    cards.add(card)
+                } else {
+                    Log.e(TAG,"Card $nid is null")
                 }
             }
         }
