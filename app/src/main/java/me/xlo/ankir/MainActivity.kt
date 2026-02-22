@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import android.widget.Toast.LENGTH_LONG
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -34,6 +35,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,6 +67,13 @@ class MainActivity : ComponentActivity() {
             AnkiRTheme {
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
+                var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
+
+                var replaceAnswer = this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+                if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
+
+
+                var list by remember { mutableStateOf<List<ACard>?>(null) }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission()
@@ -81,15 +91,25 @@ class MainActivity : ComponentActivity() {
                             title = {
                                 Text("AnkiR")
                             },
-                            actions = { FilterBtn() }
+                            actions = {
+                                FilterBtn(
+                                    deckChange = {
+                                        mFilterDeck = context.getSharedPreferences("config", MODE_PRIVATE).getString("filter", null)
+                                        list = null
+                                    },
+                                    characterChange = {
+                                        replaceAnswer = context.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+                                        Toast.makeText(context,"restart app",LENGTH_LONG).show()
+                                    }
+                                )
+                            }
                         )
                     }
                 ) {paddingValues ->
-                    var list by remember { mutableStateOf<MutableList<ACard>?>(null) }
-                    LaunchedEffect(isPermissionAllowed) {
-                        if (isPermissionAllowed && list == null) {
+                    LaunchedEffect(isPermissionAllowed,mFilterDeck) {
+                        if (isPermissionAllowed) {
                             withContext(Dispatchers.IO) {
-                                list = mHelper.getFilteredReviewCards()
+                                list = mHelper.getFilteredReviewCards(mFilterDeck).shuffled()
                             }
                         }
                     }
@@ -110,10 +130,13 @@ class MainActivity : ComponentActivity() {
                             } else if(list!!.isEmpty()) {
                                 NoCard()
                             } else {
-                                ReviewScreen(
-                                    list!!.shuffled().toMutableList(),
-                                    modifier = Modifier.padding(paddingValues)
-                                )
+                                key(replaceAnswer) {
+                                    ReviewScreen(
+                                        list!!,
+                                        modifier = Modifier.padding(paddingValues),
+                                        replaceAnswer = replaceAnswer!!
+                                    )
+                                }
                             }
                         }
                     }
@@ -123,15 +146,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
-
-    var replaceAnswer = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
-    if(replaceAnswer.isNullOrBlank())replaceAnswer = "(?!)"
-
+fun ReviewScreen(list : List<ACard>,modifier : Modifier, replaceAnswer : String) {
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var cardIndex by remember { mutableStateOf(0) }
-    var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
+    var cardIndex by remember { mutableIntStateOf(0) }
+    //var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
+    var show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${cardIndex + 1}/${list.size}", modifier = Modifier)
@@ -143,7 +163,6 @@ fun ReviewScreen(list : MutableList<ACard>,modifier : Modifier) {
             contentAlignment = Alignment.Center
         ) {
             HtmlWebView(htmlContent = show)
-            //Text(Show)
         }
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -191,16 +210,13 @@ fun NoCard() {
     }
 }
 @Composable
-fun FilterBtn() {
-    val context = LocalContext.current
+fun FilterBtn(deckChange : () -> Unit,characterChange : () -> Unit) {
     var state by remember { mutableStateOf(false) }
-    if(state) FilterDialog({ isChanged ->
+    if(state) FilterDialog { isDeckChanged,isCharacterChanged ->
         state = false
-        if(isChanged) {
-            Toast.makeText(context,"Restart app to apply changes",Toast.LENGTH_LONG)
-                .show()
-        }
-    })
+        if(isDeckChanged) deckChange()
+        if(isCharacterChanged) characterChange()
+    }
     Text(
         "Filter",
         textAlign = TextAlign.Right,
@@ -213,12 +229,13 @@ fun FilterBtn() {
     )
 }
 @Composable
-fun FilterDialog(onDismiss : (isChanged : Boolean) -> Unit) {
-    var isChanged = false
+fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boolean) -> Unit) {
+    var isDeckChanged = false
+    var isCharacterChanged = false
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
     var filterDeck by remember { mutableStateOf(mSharedPreferences.getString("filter","") ?: "") }
     var replaceAnswer by remember { mutableStateOf(mSharedPreferences.getString("replace_answer","") ?: "") }
-    Dialog(onDismissRequest = { onDismiss(isChanged) },
+    Dialog(onDismissRequest = { onDismiss(isDeckChanged,isCharacterChanged) },
         properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)) {
         Column {
             TextField(
@@ -228,7 +245,7 @@ fun FilterDialog(onDismiss : (isChanged : Boolean) -> Unit) {
                     mSharedPreferences.edit {
                         putString("filter",it) }
                     filterDeck = it
-                    isChanged = true
+                    isDeckChanged = true
                 },
                 label = { Text("Filter cards by deck name:") },
                 shape = RoundedCornerShape(10.dp)
@@ -240,13 +257,13 @@ fun FilterDialog(onDismiss : (isChanged : Boolean) -> Unit) {
                     mSharedPreferences.edit {
                         putString("replace_answer",it) }
                     replaceAnswer = it
-                    isChanged = true
+                    isCharacterChanged = true
                 },
                 label = { Text("Replace specified character in answer") },
                 shape = RoundedCornerShape(10.dp)
             )
             Button(
-                onClick = { onDismiss(isChanged) },
+                onClick = { onDismiss(isDeckChanged,isCharacterChanged) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {

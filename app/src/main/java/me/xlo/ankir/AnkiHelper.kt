@@ -17,8 +17,6 @@ class AnkiHelper(
     val TAG = "AnkiR"
     val mContentResolver = context.contentResolver
     val mApi = AddContentApi(context)
-    val mFilterDeck : String? = context.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)
-
     fun getReviewInfo(did : String) : List<Pair<String, String>> {
         val arr = mutableListOf<Pair<String, String>>()
         val deckName = mApi.getDeckName(did.toLong())
@@ -78,7 +76,6 @@ class AnkiHelper(
 //        return "-1"
 //    }
     fun getFilteredDecks(filter : String?): List<DeckInfo> {
-        //TODO:filter decks here
         val decks = mutableListOf<DeckInfo>()
         val cursor = mContentResolver.query(
             FlashCardsContract.Deck.CONTENT_ALL_URI,
@@ -115,8 +112,8 @@ class AnkiHelper(
         }
         return decks
     }
-    fun getFilteredReviewCards() : MutableList<ACard> {
-        val decks = getFilteredDecks(mFilterDeck)
+    fun getFilteredReviewCards(filterDeck : String?) : MutableList<ACard> {
+        val decks = getFilteredDecks(filterDeck)
         val cards = mutableListOf<ACard>()
         for(deck in decks) {
             val review = getReviewInfo(deck.deckId)
