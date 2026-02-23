@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import android.widget.Toast.LENGTH_LONG
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -35,7 +34,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,7 +67,7 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
 
-                var replaceAnswer = this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+                var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
 
 
@@ -84,7 +82,6 @@ class MainActivity : ComponentActivity() {
                     }
                     isPermissionAllowed = isGranted
                 }
-
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
@@ -99,7 +96,6 @@ class MainActivity : ComponentActivity() {
                                     },
                                     characterChange = {
                                         replaceAnswer = context.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
-                                        Toast.makeText(context,"restart app",LENGTH_LONG).show()
                                     }
                                 )
                             }
@@ -130,13 +126,11 @@ class MainActivity : ComponentActivity() {
                             } else if(list!!.isEmpty()) {
                                 NoCard()
                             } else {
-                                key(replaceAnswer) {
-                                    ReviewScreen(
-                                        list!!,
-                                        modifier = Modifier.padding(paddingValues),
-                                        replaceAnswer = replaceAnswer!!
-                                    )
-                                }
+                                ReviewScreen(
+                                    list!!,
+                                    modifier = Modifier.padding(paddingValues),
+                                    replaceAnswer = replaceAnswer!!
+                                )
                             }
                         }
                     }
@@ -150,7 +144,6 @@ fun ReviewScreen(list : List<ACard>,modifier : Modifier, replaceAnswer : String)
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var cardIndex by remember { mutableIntStateOf(0) }
-    //var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
     var show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
