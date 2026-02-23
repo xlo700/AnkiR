@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
 
 
-                var list by remember { mutableStateOf<List<ACard>?>(null) }
+                var list by remember { mutableStateOf<List<Card>?>(null) }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission()
@@ -140,7 +140,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : List<ACard>,modifier : Modifier, replaceAnswer : String) {
+fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String) {
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var cardIndex by remember { mutableIntStateOf(0) }

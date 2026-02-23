@@ -1,7 +1,7 @@
 package me.xlo.ankir
 
+import android.content.ContentResolver
 import android.content.Context
-import android.content.Context.MODE_PRIVATE
 import android.net.Uri
 import android.util.Log
 import com.ichi2.anki.FlashCardsContract
@@ -15,13 +15,13 @@ class AnkiHelper(
         val deckName: String
     )
     val TAG = "AnkiR"
-    val mContentResolver = context.contentResolver
+    val mContentResolver: ContentResolver = context.contentResolver
     val mApi = AddContentApi(context)
     fun getReviewInfo(did : String) : List<Pair<String, String>> {
         val arr = mutableListOf<Pair<String, String>>()
         val deckName = mApi.getDeckName(did.toLong())
-        var NoteID : String //key
-        var CardOrd : String //value
+        var noteID : String //key
+        var cardOrd : String //value
 
         val cursor = mContentResolver.query(FlashCardsContract.ReviewInfo.CONTENT_URI,
             arrayOf(FlashCardsContract.ReviewInfo.NOTE_ID, FlashCardsContract.ReviewInfo.CARD_ORD),
@@ -32,28 +32,28 @@ class AnkiHelper(
             val nid = cursor.getColumnIndex(FlashCardsContract.ReviewInfo.NOTE_ID)
             val cid = cursor.getColumnIndex(FlashCardsContract.ReviewInfo.CARD_ORD)
             while (cursor.moveToNext()) {
-                NoteID = cursor.getLong(nid).toString()
-                CardOrd = cursor.getInt(cid).toString()
-                arr.add(Pair(NoteID,CardOrd))
+                noteID = cursor.getLong(nid).toString()
+                cardOrd = cursor.getInt(cid).toString()
+                arr.add(Pair(noteID,cardOrd))
             }
         }
         Log.i(TAG,"Get review info of deck $deckName total:${arr.size}")
         return arr
     }
-    fun getCard(nid : String,cord : String) : ACard? {
+    fun getCard(nid : String,cord : String) : Card? {
         val proj = arrayOf(
             FlashCardsContract.Card.CARD_NAME,
             FlashCardsContract.Card.DECK_ID,
             FlashCardsContract.Card.ANSWER_PURE,
             FlashCardsContract.Card.QUESTION_SIMPLE
         )
-        val noteuri = Uri.withAppendedPath(FlashCardsContract.Note.CONTENT_URI,nid)
-        val cardsuri = Uri.withAppendedPath(noteuri,"cards")
-        val carduri = Uri.withAppendedPath(cardsuri,cord)
-        val cursor = mContentResolver.query(carduri,proj,null,null,null)
+        val noteUri = Uri.withAppendedPath(FlashCardsContract.Note.CONTENT_URI,nid)
+        val cardsUri = Uri.withAppendedPath(noteUri,"cards")
+        val cardUri = Uri.withAppendedPath(cardsUri,cord)
+        val cursor = mContentResolver.query(cardUri,proj,null,null,null)
         cursor?.use{
             if (it.moveToFirst()) {
-                return ACard(
+                return Card(
                     it.getString(0) ?: "",
                     it.getString(1) ?: "",
                     it.getString(2) ?: "",
@@ -112,9 +112,9 @@ class AnkiHelper(
         }
         return decks
     }
-    fun getFilteredReviewCards(filterDeck : String?) : MutableList<ACard> {
+    fun getFilteredReviewCards(filterDeck : String?) : MutableList<Card> {
         val decks = getFilteredDecks(filterDeck)
-        val cards = mutableListOf<ACard>()
+        val cards = mutableListOf<Card>()
         for(deck in decks) {
             val review = getReviewInfo(deck.deckId)
             for ((nid, cord) in review) {
@@ -129,7 +129,7 @@ class AnkiHelper(
         return cards
     }
 }
-data class ACard(
+data class Card(
     var mName : String,
     var mDeckID : String,
     var mAnswer : String,
