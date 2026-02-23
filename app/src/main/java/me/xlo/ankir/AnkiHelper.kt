@@ -1,5 +1,6 @@
 package me.xlo.ankir
 
+import Card
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
@@ -42,7 +43,7 @@ class AnkiHelper(
     }
     fun getCard(nid : String,cord : String) : Card? {
         val proj = arrayOf(
-            FlashCardsContract.Card.CARD_NAME,
+//            FlashCardsContract.Card.CARD_NAME,
             FlashCardsContract.Card.DECK_ID,
             FlashCardsContract.Card.ANSWER_PURE,
             FlashCardsContract.Card.QUESTION_SIMPLE
@@ -54,10 +55,11 @@ class AnkiHelper(
         cursor?.use{
             if (it.moveToFirst()) {
                 return Card(
+                    nid,
+                    cord,
                     it.getString(0) ?: "",
                     it.getString(1) ?: "",
-                    it.getString(2) ?: "",
-                    it.getString(3) ?: ""
+                    it.getString(2) ?: ""
                 )
             }
         }
@@ -129,9 +131,3 @@ class AnkiHelper(
         return cards
     }
 }
-data class Card(
-    var mName : String,
-    var mDeckID : String,
-    var mAnswer : String,
-    var mQuestion : String
-)

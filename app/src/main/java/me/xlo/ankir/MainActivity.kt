@@ -51,6 +51,7 @@ import androidx.core.content.edit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.xlo.ankir.ui.theme.AnkiRTheme
+import Card
 
 class MainActivity : ComponentActivity() {
 
