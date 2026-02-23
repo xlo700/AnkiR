@@ -52,6 +52,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.xlo.ankir.ui.theme.AnkiRTheme
 import Card
+import android.util.Log
 
 class MainActivity : ComponentActivity() {
 
@@ -66,11 +67,13 @@ class MainActivity : ComponentActivity() {
             AnkiRTheme {
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
+                var isSave = context.getSharedPreferences("config",MODE_PRIVATE).getBoolean("is_save",false)
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
 
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
 
+                val mSQLHelper = SQLHelper(this,"ankir",1)
 
                 var list by remember { mutableStateOf<List<Card>?>(null) }
 
@@ -93,10 +96,17 @@ class MainActivity : ComponentActivity() {
                                 FilterBtn(
                                     deckChange = {
                                         mFilterDeck = context.getSharedPreferences("config", MODE_PRIVATE).getString("filter", null)
+                                        mSQLHelper.clear()
+                                        isSave = false
                                         list = null
                                     },
                                     characterChange = {
                                         replaceAnswer = context.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)
+                                    },
+                                    clearDatabase = {
+                                        mSQLHelper.clear()
+                                        isSave = false
+                                        Log.i("AnkiR","clear database")
                                     }
                                 )
                             }
@@ -104,9 +114,23 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {paddingValues ->
                     LaunchedEffect(isPermissionAllowed,mFilterDeck) {
-                        if (isPermissionAllowed) {
-                            withContext(Dispatchers.IO) {
-                                list = mHelper.getFilteredReviewCards(mFilterDeck).shuffled()
+                        if(isPermissionAllowed) {
+                            //TODO:clear database at 0:00
+                            if (!isSave) {
+                                withContext(Dispatchers.IO) {
+                                    list = mHelper.getFilteredReviewCards(mFilterDeck).shuffled()
+                                    mSQLHelper.clear()
+                                    for(l in list) {
+                                        mSQLHelper.addCard(l.mNoteId.toLong(),l.mCardOrd.toLong(),l.mDeckID.toLong(),l.mAnswer,l.mQuestion)
+                                    }
+                                    context.getSharedPreferences("config",MODE_PRIVATE).edit {
+                                        putBoolean("is_save",true)
+                                    }
+                                    isSave = true   //TODO:is necessary?
+                                }
+                            } else {
+                                list = mSQLHelper.queryCards()
+                                Log.i("AnkiR","Get cards from database")
                             }
                         }
                     }
@@ -204,13 +228,15 @@ fun NoCard() {
     }
 }
 @Composable
-fun FilterBtn(deckChange : () -> Unit,characterChange : () -> Unit) {
+fun FilterBtn(deckChange : () -> Unit,characterChange : () -> Unit,clearDatabase : () -> Unit) {
     var state by remember { mutableStateOf(false) }
-    if(state) FilterDialog { isDeckChanged,isCharacterChanged ->
-        state = false
-        if(isDeckChanged) deckChange()
-        if(isCharacterChanged) characterChange()
-    }
+    if (state) FilterDialog(
+        onDismiss = { isDeckChanged, isCharacterChanged ->
+            state = false
+            if (isDeckChanged) deckChange()
+            if (isCharacterChanged) characterChange()
+        },
+        clearDatabase = clearDatabase)
     Text(
         "Filter",
         textAlign = TextAlign.Right,
@@ -223,7 +249,7 @@ fun FilterBtn(deckChange : () -> Unit,characterChange : () -> Unit) {
     )
 }
 @Composable
-fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boolean) -> Unit) {
+fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boolean) -> Unit,clearDatabase : () -> Unit) {
     var isDeckChanged = false
     var isCharacterChanged = false
     val mSharedPreferences = LocalContext.current.getSharedPreferences("config",MODE_PRIVATE)
@@ -262,6 +288,13 @@ fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boole
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Confirm")
+            }
+            Button(
+                onClick = { clearDatabase() },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Clear Database")
             }
         }
     }
