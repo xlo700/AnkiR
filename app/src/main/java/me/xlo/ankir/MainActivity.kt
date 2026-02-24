@@ -69,8 +69,8 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 var isSave by remember { mutableStateOf(context.getSharedPreferences("config", MODE_PRIVATE).getBoolean("is_save", false)) }
 
+                var cardIndex by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)) }
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
-
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
 
@@ -127,6 +127,7 @@ class MainActivity : ComponentActivity() {
                                     context.getSharedPreferences("config",MODE_PRIVATE).edit {
                                         putBoolean("is_save",true)
                                     }
+                                    cardIndex = context.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)
                                     isSave = true
                                 }
                             } else {
@@ -155,7 +156,8 @@ class MainActivity : ComponentActivity() {
                                 ReviewScreen(
                                     list!!,
                                     modifier = Modifier.padding(paddingValues),
-                                    replaceAnswer = replaceAnswer!!
+                                    replaceAnswer = replaceAnswer!!,
+                                    cardIndexArg = cardIndex
                                 )
                             }
                         }
@@ -166,11 +168,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String) {
+fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,cardIndexArg : Int) {
 
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var cardIndex by remember { mutableIntStateOf(0) }
+    //var cardIndex by remember { mutableIntStateOf(0) }
+    var cardIndex by remember { mutableStateOf(cardIndexArg) }
     var show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
@@ -194,6 +197,9 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String)
                     } else {
                         cardIndex = cardIndex + 1
                         show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+                        context.getSharedPreferences("config",MODE_PRIVATE).edit {
+                            putInt("card_index",cardIndex)
+                        }
                     }
                 },
                 modifier = Modifier
