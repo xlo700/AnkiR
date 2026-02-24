@@ -67,7 +67,8 @@ class MainActivity : ComponentActivity() {
             AnkiRTheme {
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
-                var isSave = context.getSharedPreferences("config",MODE_PRIVATE).getBoolean("is_save",false)
+                var isSave by remember { mutableStateOf(context.getSharedPreferences("config", MODE_PRIVATE).getBoolean("is_save", false)) }
+
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
 
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                     clearDatabase = {
                                         mSQLHelper.clear()
                                         isSave = false
+                                        list = null
                                         Log.i("AnkiR","clear database")
                                     }
                                 )
@@ -113,9 +115,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {paddingValues ->
-                    LaunchedEffect(isPermissionAllowed,mFilterDeck) {
+                    LaunchedEffect(isPermissionAllowed,mFilterDeck,isSave) {
                         if(isPermissionAllowed) {
-                            //TODO:clear database at 0:00
                             if (!isSave) {
                                 withContext(Dispatchers.IO) {
                                     list = mHelper.getFilteredReviewCards(mFilterDeck).shuffled()
@@ -126,7 +127,7 @@ class MainActivity : ComponentActivity() {
                                     context.getSharedPreferences("config",MODE_PRIVATE).edit {
                                         putBoolean("is_save",true)
                                     }
-                                    isSave = true   //TODO:is necessary?
+                                    isSave = true
                                 }
                             } else {
                                 list = mSQLHelper.queryCards()
@@ -166,6 +167,7 @@ class MainActivity : ComponentActivity() {
 }
 @Composable
 fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String) {
+
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var cardIndex by remember { mutableIntStateOf(0) }
@@ -238,7 +240,7 @@ fun FilterBtn(deckChange : () -> Unit,characterChange : () -> Unit,clearDatabase
         },
         clearDatabase = clearDatabase)
     Text(
-        "Filter",
+        "Setting",
         textAlign = TextAlign.Right,
         modifier = Modifier
             .clickable(
@@ -283,18 +285,23 @@ fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boole
                 shape = RoundedCornerShape(10.dp)
             )
             Button(
-                onClick = { onDismiss(isDeckChanged,isCharacterChanged) },
+                onClick = {
+                    onDismiss(isDeckChanged, isCharacterChanged)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Confirm")
             }
             Button(
-                onClick = { clearDatabase() },
+                onClick = {
+                    clearDatabase()
+                    onDismiss(isDeckChanged,isCharacterChanged)
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Clear Database")
+                Text("Clear cached cards")
             }
         }
     }
