@@ -52,6 +52,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.xlo.ankir.ui.theme.AnkiRTheme
 import Card
+import android.content.Context
 import android.util.Log
 
 class MainActivity : ComponentActivity() {
@@ -68,13 +69,15 @@ class MainActivity : ComponentActivity() {
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
                 var isSave by remember { mutableStateOf(context.getSharedPreferences("config", MODE_PRIVATE).getBoolean("is_save", false)) }
+                val isFinishNew = this.getSharedPreferences("config",MODE_PRIVATE).getBoolean("finish_new",false)
 
-                var cardIndex by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)) }
+                //var cardIndex by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)) }
+                var cardIndex =this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
 
-                val mSQLHelper = SQLHelper(this,"ankir",1)
+                val mSQLHelper = SQLHelper(this,"ankir",2)
 
                 var list by remember { mutableStateOf<List<Card>?>(null) }
 
@@ -115,14 +118,14 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) {paddingValues ->
-                    LaunchedEffect(isPermissionAllowed,mFilterDeck,isSave) {
+                    LaunchedEffect(isPermissionAllowed,mFilterDeck,isSave,list) {
                         if(isPermissionAllowed) {
                             if (!isSave) {
                                 withContext(Dispatchers.IO) {
                                     list = mHelper.getFilteredReviewCards(mFilterDeck).shuffled()
                                     mSQLHelper.clear()
                                     for(l in list) {
-                                        mSQLHelper.addCard(l.mNoteId.toLong(),l.mCardOrd.toLong(),l.mDeckID.toLong(),l.mAnswer,l.mQuestion)
+                                        mSQLHelper.addCard(l,mSQLHelper.CARD_TABLE)
                                     }
                                     context.getSharedPreferences("config",MODE_PRIVATE).edit {
                                         putBoolean("is_save",true)
@@ -131,8 +134,13 @@ class MainActivity : ComponentActivity() {
                                     isSave = true
                                 }
                             } else {
-                                list = mSQLHelper.queryCards()
-                                Log.i("AnkiR","Get cards from database")
+                                if(!isFinishNew) {
+                                    list = mSQLHelper.queryCards(mSQLHelper.CARD_TABLE)
+                                    Log.i("AnkiR","Get cards from card database")
+                                } else {
+                                    list = mSQLHelper.queryCards(mSQLHelper.REVIEW_TABLE)
+                                    Log.i("AnkiR","Get cards from review database")
+                                }
                             }
                         }
                     }
@@ -157,7 +165,10 @@ class MainActivity : ComponentActivity() {
                                     list!!,
                                     modifier = Modifier.padding(paddingValues),
                                     replaceAnswer = replaceAnswer!!,
-                                    cardIndexArg = cardIndex
+                                    cardIndexArg = cardIndex,
+                                    finishNew = {
+                                        list = null
+                                    }
                                 )
                             }
                         }
@@ -168,13 +179,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,cardIndexArg : Int) {
+fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,cardIndexArg : Int,finishNew : () -> Unit) {
 
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
     //var cardIndex by remember { mutableIntStateOf(0) }
     var cardIndex by remember { mutableStateOf(cardIndexArg) }
-    var show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+    var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${cardIndex + 1}/${list.size}", modifier = Modifier)
@@ -189,41 +200,105 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
         }
         Row(modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(
-                onClick = {
-                    if(cardIndex >= (list.size - 1)) {
-                        Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
-                            .show()
-                    } else {
-                        cardIndex = cardIndex + 1
-                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-                        context.getSharedPreferences("config",MODE_PRIVATE).edit {
-                            putInt("card_index",cardIndex)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
-                Text("Next")
-            }
-            Button(
-                onClick = {
-                    if(isQuestion) {
-                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-                        isQuestion = false
-                    } else {
+            if(!isQuestion) {
+                Button(
+                    onClick = {
                         show = list[cardIndex].mQuestion
                         isQuestion = true
-                    }
-                },
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
-                Text("Reverse")
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Text("Show question")
+                }
+            } else {
+                Button(
+                    onClick = {
+                        if(cardIndex >= (list.size - 1)) {
+                            Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
+                                .show()
+                        } else {
+                            cardIndex = cardIndex + 1
+                            show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+                            context.getSharedPreferences("config",MODE_PRIVATE).edit {
+                                putInt("card_index",cardIndex)
+                            }
+                        }
+                        isQuestion = false
+                    }, modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Text("Next")
+                }
+                Button(
+                    onClick = {
+                        if(cardIndex >= (list.size - 1)) {
+                            Toast.makeText(context,"You've completed today's new tasks!",Toast.LENGTH_LONG)
+                                .show()
+                            context.getSharedPreferences("config", MODE_PRIVATE).edit {
+                                putBoolean("finish_new", true)
+                            }
+                            addReviewCard(context.applicationContext,list[cardIndex])
+                            finishNew()
+                            context.getSharedPreferences("config", MODE_PRIVATE).edit {
+                                putInt("card_index", 0)
+                            }
+                            cardIndex = 0
+                            //TODO
+                        } else {
+                            cardIndex = cardIndex + 1
+                            show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+                            context.getSharedPreferences("config",MODE_PRIVATE).edit {
+                                putInt("card_index",cardIndex)
+                            }
+                            addReviewCard(context.applicationContext,list[cardIndex])
+                            isQuestion = false
+                        }
+                    }, modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Text("Forget")
+                }
             }
+
+//            Button(
+//                onClick = {
+//                    if(cardIndex >= (list.size - 1)) {
+//                        Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
+//                            .show()
+//                    } else {
+//                        cardIndex = cardIndex + 1
+//                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+//                        context.getSharedPreferences("config",MODE_PRIVATE).edit {
+//                            putInt("card_index",cardIndex)
+//                        }
+//                    }
+//                },
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .padding(horizontal = 8.dp)
+//            ) {
+//                Text("Next")
+//            }
+//            Button(
+//                onClick = {
+//                    if(isQuestion) {
+//                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
+//                        isQuestion = false
+//                    } else {
+//                        show = list[cardIndex].mQuestion
+//                        isQuestion = true
+//                    }
+//                },
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .padding(horizontal = 8.dp)
+//            ) {
+//                Text("Reverse")
+//            }
         }
     }
 }
@@ -273,7 +348,7 @@ fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boole
                     mSharedPreferences.edit {
                         putString("filter",it) }
                     filterDeck = it
-                    isDeckChanged = true
+                    isDeckChanged = true    //TODO
                 },
                 label = { Text("Filter cards by deck name:") },
                 shape = RoundedCornerShape(10.dp)
@@ -285,7 +360,7 @@ fun FilterDialog(onDismiss : (isDeckChanged : Boolean,isCharacterChanged : Boole
                     mSharedPreferences.edit {
                         putString("replace_answer",it) }
                     replaceAnswer = it
-                    isCharacterChanged = true
+                    isCharacterChanged = true   //TODO
                 },
                 label = { Text("Replace specified character in answer") },
                 shape = RoundedCornerShape(10.dp)
@@ -370,4 +445,9 @@ fun HtmlWebView(htmlContent: String) {
             webView.loadDataWithBaseURL(null, wrappedHtml, "text/html", "UTF-8", null)
         }
     )
+}
+fun addReviewCard(context : Context, card : Card) {
+    SQLHelper(context,"ankir",2).apply {
+        addCard(card,REVIEW_TABLE)
+    }
 }

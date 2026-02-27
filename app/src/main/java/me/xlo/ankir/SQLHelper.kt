@@ -12,8 +12,19 @@ class SQLHelper(context : Context, name : String, version : Int) : SQLiteOpenHel
     val mContext = context
     val ANSWER = "answer"
     val QUESTION = "question"
-
-    val createCard = "CREATE TABLE card (" +
+    val DECK_ID = "did"
+    val NOTE_ID = "nid"
+    val CARD_ORD = "cord"
+    val CARD_TABLE = "card"
+    val REVIEW_TABLE = "review"
+    val createCard = "CREATE TABLE $CARD_TABLE (" +
+            "nid integer," +
+            "cord integer," +
+            "did integer," +
+            "answer text," +
+            "question text" +
+            ");"
+    val createReview = "CREATE TABLE $REVIEW_TABLE (" +
             "nid integer," +
             "cord integer," +
             "did integer," +
@@ -24,37 +35,43 @@ class SQLHelper(context : Context, name : String, version : Int) : SQLiteOpenHel
     override fun onCreate(db: SQLiteDatabase?) {
         if(db == null)return
         db.execSQL(createCard)
+        db.execSQL(createReview)
     }
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-
+        if(db == null)return
+        db.execSQL(createReview)
     }
-    fun addCard(nid : Long, cord : Long, did : Long, answer : String, question : String) {
+    fun addCard(card : Card, table : String) {
         val db = this.writableDatabase
         val values = ContentValues().apply {
-            put("nid",nid)
-            put("cord",cord)
-            put("did",did)
-            put("answer",answer)
-            put("question",question)
+            put(NOTE_ID,card.mNoteId.toLong())
+            put(CARD_ORD,card.mCardOrd.toLong())
+            put(DECK_ID,card.mDeckID.toLong())
+            put(ANSWER,card.mAnswer)
+            put(QUESTION,card.mQuestion)
         }
-        db.insert("card",null,values)
+        db.insert(table,null,values)
     }
-    fun queryCards() : List<Card> {
+    fun queryCards(table: String) : List<Card> {
         val db = this.writableDatabase
         val cards = mutableListOf<Card>()
-        val columns = arrayOf(ANSWER,QUESTION)
-        val cursor = db.query("card",columns,null,null,null,null,null)
+        val columns = arrayOf(NOTE_ID, CARD_ORD, DECK_ID, ANSWER, QUESTION)
+        val cursor = db.query(table,columns,null,null,null,null,null)
         cursor.use {
             val answer = cursor.getColumnIndex(ANSWER)
             val question = cursor.getColumnIndex(QUESTION)
+            val noteId = cursor.getColumnIndex(NOTE_ID)
+            val cardOrd = cursor.getColumnIndex(CARD_ORD)
+            val deckId = cursor.getColumnIndex(DECK_ID)
             while (cursor.moveToNext()) {
-                cards.add(Card("","","",cursor.getString(answer),cursor.getString(question)))
+                cards.add(Card(noteId.toString(),cardOrd.toString(),deckId.toString(),cursor.getString(answer),cursor.getString(question)))
             }
         }
         return cards
     }
     fun clear() {
-        this.writableDatabase.delete("card",null,null)
+        this.writableDatabase.delete(CARD_TABLE,null,null)
+        this.writableDatabase.delete(REVIEW_TABLE,null,null)
         mContext.getSharedPreferences("config",MODE_PRIVATE).edit {
             putBoolean("is_save",false)
         }
