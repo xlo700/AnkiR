@@ -76,6 +76,9 @@ class SQLHelper(context : Context, name : String, version : Int) : SQLiteOpenHel
             putBoolean("is_save",false)
         }
         mContext.getSharedPreferences("config",MODE_PRIVATE).edit {
+            putBoolean("finish_new",false)
+        }
+        mContext.getSharedPreferences("config",MODE_PRIVATE).edit {
             putInt("card_index",0)
         }
     }
