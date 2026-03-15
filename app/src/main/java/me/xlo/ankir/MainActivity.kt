@@ -71,8 +71,6 @@ class MainActivity : ComponentActivity() {
                 var isSave by remember { mutableStateOf(context.getSharedPreferences("config", MODE_PRIVATE).getBoolean("is_save", false)) }
                 val isFinishNew = this.getSharedPreferences("config",MODE_PRIVATE).getBoolean("finish_new",false)
 
-                //var cardIndex by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)) }
-                var cardIndex =this.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
                 if(replaceAnswer.isNullOrBlank()) replaceAnswer = "(?!)"
@@ -130,7 +128,6 @@ class MainActivity : ComponentActivity() {
                                     context.getSharedPreferences("config",MODE_PRIVATE).edit {
                                         putBoolean("is_save",true)
                                     }
-                                    cardIndex = context.getSharedPreferences("config",MODE_PRIVATE).getInt("card_index",0)
                                     isSave = true
                                 }
                             } else {
@@ -165,7 +162,6 @@ class MainActivity : ComponentActivity() {
                                     list!!,
                                     modifier = Modifier.padding(paddingValues),
                                     replaceAnswer = replaceAnswer!!,
-                                    cardIndexArg = cardIndex,
                                     finishNew = {
                                         list = null
                                     }
@@ -179,13 +175,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 @Composable
-fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,cardIndexArg : Int,finishNew : () -> Unit) {
+fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String, finishNew : () -> Unit) {
 
     var isQuestion by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    //var cardIndex by remember { mutableIntStateOf(0) }
-    var cardIndex by remember { mutableStateOf(cardIndexArg) }
+    val dbHelper = SQLHelper(context,"ankir",2)
+    var cardIndex by remember { mutableIntStateOf(0) }
     var show by remember { mutableStateOf(list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")) }
+    val isFinishNew = context.getSharedPreferences("config",MODE_PRIVATE).getBoolean("finish_new",false)
     Column(modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween) {
         Text("Total:${cardIndex + 1}/${list.size}", modifier = Modifier)
@@ -216,16 +213,20 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                 Button(
                     onClick = {
                         if(cardIndex >= (list.size - 1)) {
-                            Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
-                                .show()
+                            cardIndex = 0
+                            finishNew()
                         } else {
                             cardIndex = cardIndex + 1
                             show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-                            context.getSharedPreferences("config",MODE_PRIVATE).edit {
-                                putInt("card_index",cardIndex)
-                            }
                         }
                         isQuestion = false
+                        dbHelper.deleteCard(list[cardIndex],
+                            if (!isFinishNew) {
+                                dbHelper.CARD_TABLE
+                            } else {
+                                dbHelper.REVIEW_TABLE
+                            }
+                        )
                     }, modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
@@ -235,70 +236,32 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                 Button(
                     onClick = {
                         if(cardIndex >= (list.size - 1)) {
-                            Toast.makeText(context,"You've completed today's new tasks!",Toast.LENGTH_LONG)
-                                .show()
                             context.getSharedPreferences("config", MODE_PRIVATE).edit {
                                 putBoolean("finish_new", true)
                             }
                             addReviewCard(context.applicationContext,list[cardIndex])
                             finishNew()
-                            context.getSharedPreferences("config", MODE_PRIVATE).edit {
-                                putInt("card_index", 0)
-                            }
                             cardIndex = 0
                             //TODO
                         } else {
+                            addReviewCard(context.applicationContext,list[cardIndex])
                             cardIndex = cardIndex + 1
                             show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-                            context.getSharedPreferences("config",MODE_PRIVATE).edit {
-                                putInt("card_index",cardIndex)
-                            }
-                            addReviewCard(context.applicationContext,list[cardIndex])
                             isQuestion = false
                         }
-                    }, modifier = Modifier
+                        dbHelper.deleteCard(list[cardIndex],
+                            if (!isFinishNew) {
+                                dbHelper.CARD_TABLE
+                            } else {
+                                dbHelper.REVIEW_TABLE
+                            }
+                        )                    }, modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
                 ) {
                     Text("Forget")
                 }
             }
-
-//            Button(
-//                onClick = {
-//                    if(cardIndex >= (list.size - 1)) {
-//                        Toast.makeText(context,"You've completed today's tasks!",Toast.LENGTH_LONG)
-//                            .show()
-//                    } else {
-//                        cardIndex = cardIndex + 1
-//                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-//                        context.getSharedPreferences("config",MODE_PRIVATE).edit {
-//                            putInt("card_index",cardIndex)
-//                        }
-//                    }
-//                },
-//                modifier = Modifier
-//                    .weight(1f)
-//                    .padding(horizontal = 8.dp)
-//            ) {
-//                Text("Next")
-//            }
-//            Button(
-//                onClick = {
-//                    if(isQuestion) {
-//                        show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
-//                        isQuestion = false
-//                    } else {
-//                        show = list[cardIndex].mQuestion
-//                        isQuestion = true
-//                    }
-//                },
-//                modifier = Modifier
-//                    .weight(1f)
-//                    .padding(horizontal = 8.dp)
-//            ) {
-//                Text("Reverse")
-//            }
         }
     }
 }
