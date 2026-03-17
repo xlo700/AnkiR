@@ -5,14 +5,6 @@ plugins {
 }
 
 android {
-    signingConfigs {
-        getByName("debug") {
-            storeFile = file("E:\\Keystore\\il")
-            storePassword = "iled25519"
-            keyAlias = "key0"
-            keyPassword = "ilrsa256"
-        }
-    }
     namespace = "me.xlo.ankir"
     compileSdk {
         version = release(36)
