@@ -212,6 +212,13 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
             } else {
                 Button(
                     onClick = {
+                        dbHelper.deleteCard(list[cardIndex],
+                            if (!isFinishNew) {
+                                dbHelper.CARD_TABLE
+                            } else {
+                                dbHelper.REVIEW_TABLE
+                            }
+                        )
                         if(cardIndex >= (list.size - 1)) {
                             cardIndex = 0
                             finishNew()
@@ -220,13 +227,6 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                             show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
                         }
                         isQuestion = false
-                        dbHelper.deleteCard(list[cardIndex],
-                            if (!isFinishNew) {
-                                dbHelper.CARD_TABLE
-                            } else {
-                                dbHelper.REVIEW_TABLE
-                            }
-                        )
                     }, modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
@@ -235,6 +235,13 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                 }
                 Button(
                     onClick = {
+                        dbHelper.deleteCard(list[cardIndex],
+                            if (!isFinishNew) {
+                                dbHelper.CARD_TABLE
+                            } else {
+                                dbHelper.REVIEW_TABLE
+                            }
+                        )  
                         if(cardIndex >= (list.size - 1)) {
                             context.getSharedPreferences("config", MODE_PRIVATE).edit {
                                 putBoolean("finish_new", true)
@@ -249,13 +256,7 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                             show = list[cardIndex].mAnswer.replace(replaceAnswer.toRegex(), "")
                             isQuestion = false
                         }
-                        dbHelper.deleteCard(list[cardIndex],
-                            if (!isFinishNew) {
-                                dbHelper.CARD_TABLE
-                            } else {
-                                dbHelper.REVIEW_TABLE
-                            }
-                        )                    }, modifier = Modifier
+                                          }, modifier = Modifier
                         .weight(1f)
                         .padding(horizontal = 8.dp)
                 ) {
