@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                     isSave = true
                                 }
-                            } else {
+                            } else if(list.isNullOrEmpty()) {
                                 if(!isFinishNew) {
                                     list = mSQLHelper.queryCards(mSQLHelper.CARD_TABLE)
                                     Log.i("AnkiR","Get cards from card database")

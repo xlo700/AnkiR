@@ -88,10 +88,8 @@ class SQLHelper(context : Context, name : String, version : Int) : SQLiteOpenHel
     fun clear() {
         this.writableDatabase.delete(CARD_TABLE,null,null)
         this.writableDatabase.delete(REVIEW_TABLE,null,null)
-        mContext.getSharedPreferences("config",MODE_PRIVATE).edit {
+        mContext.getSharedPreferences("config",MODE_PRIVATE).edit(commit = true) {
             putBoolean("is_save",false)
-        }
-        mContext.getSharedPreferences("config",MODE_PRIVATE).edit {
             putBoolean("finish_new",false)
         }
     }
