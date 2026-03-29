@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
                 var isPermissionAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(this.applicationContext,"com.ichi2.anki.permission.READ_WRITE_DATABASE") == PackageManager.PERMISSION_GRANTED) }
                 val context = LocalContext.current
                 var isSave by remember { mutableStateOf(context.getSharedPreferences("config", MODE_PRIVATE).getBoolean("is_save", false)) }
-                val isFinishNew = this.getSharedPreferences("config",MODE_PRIVATE).getBoolean("finish_new",false)
+                var isFinishNew = this.getSharedPreferences("config",MODE_PRIVATE).getBoolean("finish_new",false)
 
                 var mFilterDeck by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("filter",null)) }
                 var replaceAnswer by remember { mutableStateOf(this.getSharedPreferences("config",MODE_PRIVATE).getString("replace_answer",null)) }
@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
                                     replaceAnswer = replaceAnswer!!,
                                     finishNew = {
                                         list = null
+                                        isFinishNew = true
                                     }
                                 )
                             }
@@ -220,6 +221,9 @@ fun ReviewScreen(list : List<Card>, modifier : Modifier, replaceAnswer : String,
                             }
                         )
                         if(cardIndex >= (list.size - 1)) {
+                            context.getSharedPreferences("config", MODE_PRIVATE).edit {
+                                putBoolean("finish_new", true)
+                            }
                             cardIndex = 0
                             finishNew()
                         } else {
