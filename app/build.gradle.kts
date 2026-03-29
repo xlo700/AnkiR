@@ -7,10 +7,13 @@ plugins {
 android {
     signingConfigs {
         getByName("debug") {
-            storeFile = file("E:\\Keystore\\il")
-            storePassword = "iled25519"
-            keyAlias = "key0"
-            keyPassword = "ilrsa256"
+            val ks = file("E:\\Keystore\\il")
+            if (ks.exists()) {
+                storeFile = ks
+                storePassword = "iled25519"
+                keyAlias = "key0"
+                keyPassword = "ilrsa256"
+            }
         }
     }
     namespace = "me.xlo.ankir"
